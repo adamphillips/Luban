@@ -67,7 +67,6 @@ build_script:
         npm run build:win-ia32
         Get-ChildItem output
         Copy-Item "output\${PRODUCT_NAME} Setup ${PACKAGE_VERSION}.exe" "releases\${RELEASE}-win-ia32.exe"
-        Copy-Item "output\latest.yml" "releases\latest.yml"
       }
 
 test: off
