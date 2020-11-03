@@ -3,16 +3,19 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { connect } from 'react-redux';
 
+import Select from 'react-select';
 import i18n from '../../../lib/i18n';
 import { NumberInput as Input } from '../../../components/Input';
 import Anchor from '../../../components/Anchor';
 import TipTrigger from '../../../components/TipTrigger';
 import { actions } from '../../../flux/editor';
+import { CNC_3DP_MODEL_SLICE_MODE_4AXIS_LINKAGE, CNC_3DP_MODEL_SLICE_MODE_ROTATION } from '../../../constants';
 
 class Image3DGcodeParameters extends PureComponent {
     static propTypes = {
         disabled: PropTypes.bool,
         size: PropTypes.object.isRequired,
+        sliceMode: PropTypes.string,
         targetDepth: PropTypes.number,
         materials: PropTypes.object,
         stepDown: PropTypes.number,
@@ -36,6 +39,9 @@ class Image3DGcodeParameters extends PureComponent {
                 this.props.updateSelectedModelGcodeConfig({ stepDown: targetDepth });
             }
         },
+        onChangeSliceMode: (sliceMode) => {
+            this.props.updateSelectedModelGcodeConfig({ sliceMode: sliceMode.value });
+        },
         onChangeStepDown: (stepDown) => {
             this.props.updateSelectedModelGcodeConfig({ stepDown });
         },
@@ -51,8 +57,17 @@ class Image3DGcodeParameters extends PureComponent {
     };
 
     render() {
-        const { size, disabled, materials, targetDepth, stepDown, safetyHeight, stopHeight, density } = this.props;
+        const { size, disabled, materials, sliceMode, targetDepth, stepDown, safetyHeight, stopHeight, density } = this.props;
         const { isRotate, diameter } = materials;
+
+        const sliceModeOptions = [{
+            value: CNC_3DP_MODEL_SLICE_MODE_ROTATION,
+            label: CNC_3DP_MODEL_SLICE_MODE_ROTATION
+        }, {
+            value: CNC_3DP_MODEL_SLICE_MODE_4AXIS_LINKAGE,
+            label: CNC_3DP_MODEL_SLICE_MODE_4AXIS_LINKAGE
+        }];
+
         return (
             <div>
                 <Anchor className="sm-parameter-header" onClick={this.actions.onToggleExpand}>
@@ -69,6 +84,26 @@ class Image3DGcodeParameters extends PureComponent {
                 {this.state.expanded && (
                     <React.Fragment>
                         <div>
+                            {isRotate && (
+                                <TipTrigger
+                                    title={i18n._('Slice Mode')}
+                                    content={i18n._('4-axis slicing method')}
+                                >
+                                    <div className="sm-parameter-row">
+                                        <span className="sm-parameter-row__label">{i18n._('Slice Mode')}</span>
+                                        <Select
+                                            disabled={disabled}
+                                            className="sm-parameter-row__select"
+                                            backspaceRemoves={false}
+                                            clearable={false}
+                                            searchable={false}
+                                            options={sliceModeOptions}
+                                            value={sliceMode}
+                                            onChange={this.actions.onChangeSliceMode}
+                                        />
+                                    </div>
+                                </TipTrigger>
+                            )}
                             {!isRotate && (
                                 <TipTrigger
                                     title={i18n._('Target Depth')}
@@ -182,10 +217,11 @@ const mapStateToProps = (state) => {
     const { toolPathModelGroup, materials } = state.cnc;
     const toolPathModel = toolPathModelGroup.getSelectedModel();
     const { gcodeConfig } = toolPathModel;
-    const { targetDepth, stepDown, safetyHeight, stopHeight, density } = gcodeConfig;
+    const { sliceMode, targetDepth, stepDown, safetyHeight, stopHeight, density } = gcodeConfig;
     return {
         size: machine.size,
         materials,
+        sliceMode,
         targetDepth,
         stepDown,
         safetyHeight,

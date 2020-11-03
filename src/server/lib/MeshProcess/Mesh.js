@@ -1,9 +1,9 @@
 import fs from 'fs';
 import { AABB3D } from './AABB3D';
-import { Vector3 } from '../math/Vector3';
+import { Vector3 } from '../../../shared/lib/math/Vector3';
 import { STLParse } from '../../../shared/lib/STLParse/STLParse';
 import { PLANE_XY, PLANE_XZ, PLANE_YZ } from '../../constants';
-import { Vector2 } from '../math/Vector2';
+import { Vector2 } from '../../../shared/lib/math/Vector2';
 
 const VERTEX_MELD_DISTANCE = 0.03;
 
@@ -141,6 +141,16 @@ export class Mesh {
             vertex.p = Vector3.add(vertex.p, offset);
         }
         this.aabb.offset(offset);
+    }
+
+    resize(offset) {
+        if (Vector3.isZero(offset)) {
+            return;
+        }
+        for (const vertex of this.vertices) {
+            vertex.p = Vector3.mul(vertex.p, offset);
+        }
+        this.aabb.resize(offset);
     }
 
     finish() {

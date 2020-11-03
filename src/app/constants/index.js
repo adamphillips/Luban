@@ -238,3 +238,6 @@ export const SOURCE_TYPE_IMAGE3D = 'image3d';
 export const PROCESS_MODE_BW = 'bw';
 export const PROCESS_MODE_VECTOR = 'vector';
 export const PROCESS_MODE_GREYSCALE = 'greyscale';
+
+export const CNC_3DP_MODEL_SLICE_MODE_ROTATION = 'rotation';
+export const CNC_3DP_MODEL_SLICE_MODE_4AXIS_LINKAGE = '3axisLinkage';

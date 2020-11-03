@@ -4,6 +4,7 @@ import noop from 'lodash/noop';
 import ToolPath from '../../../shared/lib/gcodeToolPath';
 import { DATA_PREFIX } from '../../constants';
 import { readFileToList } from './index';
+import { Vector2 } from '../../../shared/lib/math/Vector2';
 
 const defaultColor = [40, 167, 255];
 const motionColor = {
@@ -54,10 +55,11 @@ class GcodeToBufferGeometryWorkspace {
                 const { headerType, isRotate = false, diameter } = modal;
                 if (isRotate) {
                     const z = headerType === 'cnc' ? state.z : diameter / 2;
+                    const res = Vector2.rotate({ x: state.x, y: z }, state.b);
                     return {
-                        x: z * Math.sin(state.b / 180 * Math.PI) + state.x * Math.cos(state.b / 180 * Math.PI),
+                        x: res.x,
                         y: state.y,
-                        z: z * Math.cos(state.b / 180 * Math.PI) - state.x * Math.sin(state.b / 180 * Math.PI)
+                        z: res.y
                     };
                 } else {
                     return state;

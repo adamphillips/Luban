@@ -1,5 +1,5 @@
 import { Vector3 } from './Vector3';
-import { isZero } from '../../../shared/lib/utils';
+import { isZero } from '../utils';
 import { Vector2 } from './Vector2';
 
 export const TYPE_LINE = 'line';

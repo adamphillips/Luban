@@ -1,6 +1,7 @@
-import { Vector2 } from '../math/Vector2';
+import { Vector2 } from '../../../shared/lib/math/Vector2';
 
 import { isEqual } from '../../../shared/lib/utils';
+import PolygonOffset from '../ToolPathGenerator/PolygonOffset';
 
 function getDist2FromLine(p, a, b) {
     const vba = Vector2.sub(b, a);
@@ -30,6 +31,16 @@ export class Polygon {
 
     back() {
         return this.path[this.path.length - 1];
+    }
+
+    close() {
+        if (this.path) {
+            const p1 = this.path[0];
+            const p2 = this.path[this.path.length - 1];
+            if (!Vector2.isEqual(p1, p2)) {
+                this.path.push(p1);
+            }
+        }
     }
 
     simplify(smallestLineSegmentSquared, allowedErrorDistanceSquared) {
@@ -133,7 +144,7 @@ export class Polygons {
             const isDegenerate = function (last, now, next) {
                 const lastLine = Vector2.sub(now, last);
                 const nextLine = Vector2.sub(next, now);
-                return isEqual(Vector2.dot(lastLine, nextLine), -1 * Vector2.length2(lastLine) * Vector2.length2(nextLine));
+                return isEqual(Vector2.dot(lastLine, nextLine), -1 * Vector2.length(lastLine) * Vector2.length(nextLine));
             };
 
             let isChanged = false;
@@ -166,13 +177,20 @@ export class Polygons {
         }
     }
 
-    // splitIntoParts(unionAll) {
-    //     for (const path of this.paths) {
-    //         console.log(path);
-    //     }
-    //     const map = this.paths[0].map(v => [v.x, v.y]);
-    //     console.log(map);
-    //     const result = martinez.intersection([[map]], [[map]]);
-    //     return undefined;
-    // }
+    splitIntoParts() {
+        const polygonOffsetPaths = [];
+        for (const path of this.paths) {
+            polygonOffsetPaths.push([[path.map(v => [v.x, v.y])]]);
+        }
+        const result = PolygonOffset.recursiveUnion(polygonOffsetPaths);
+        const polygonsParts = new Polygons();
+        for (const paths of result) {
+            const polygonPart = new Polygon();
+            for (const pathElement of paths[0]) {
+                polygonPart.add({ x: pathElement[0], y: pathElement[1] });
+            }
+            polygonsParts.add(polygonPart);
+        }
+        return polygonsParts;
+    }
 }

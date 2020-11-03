@@ -1,4 +1,4 @@
-import { isEqual } from '../../../shared/lib/utils';
+import { angleToPi, isEqual, piToAngle, round } from '../utils';
 
 export class Vector2 {
     static ZERO = {
@@ -16,6 +16,34 @@ export class Vector2 {
         return {
             x: v1.x - v2.x,
             y: v1.y - v2.y
+        };
+    }
+
+    static mul(v1, v2) {
+        return {
+            x: v1.x * v2.x,
+            y: v1.y * v2.y
+        };
+    }
+
+    static mulScale(v1, scale) {
+        return {
+            x: v1.x * scale,
+            y: v1.y * scale
+        };
+    }
+
+    static div(v1, v2) {
+        return {
+            x: v1.x / v2.x,
+            y: v1.y / v2.x
+        };
+    }
+
+    static divScale(v1, scale) {
+        return {
+            x: v1.x / scale,
+            y: v1.y / scale
         };
     }
 
@@ -64,13 +92,14 @@ export class Vector2 {
     }
 
     static angle(v) {
-        const angle = Math.atan2(v.y, v.x) * 180 / Math.PI;
+        const angle = round(piToAngle(Math.atan2(v.y, v.x)), 3);
         return angle > 0 ? angle : angle + 360;
     }
 
     static rotate(p, angle, center = { x: 0, y: 0 }) {
-        const x = (p.x - center.x) * Math.cos(angle) - (p.y - center.y) * Math.sin(angle) + center.x;
-        const y = (p.x - center.x) * Math.sin(angle) + (p.y - center.y) * Math.cos(angle) + center.y;
+        const pi = angleToPi(angle);
+        const x = (p.x - center.x) * Math.cos(pi) - (p.y - center.y) * Math.sin(pi) + center.x;
+        const y = (p.x - center.x) * Math.sin(pi) + (p.y - center.y) * Math.cos(pi) + center.y;
         return { x, y };
     }
 }

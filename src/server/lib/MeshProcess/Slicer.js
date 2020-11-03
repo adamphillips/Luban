@@ -1,5 +1,6 @@
 import { Polygon, Polygons } from './Polygons';
-import { Vector2 } from '../math/Vector2';
+import { Vector2 } from '../../../shared/lib/math/Vector2';
+import { round } from '../../../shared/lib/utils';
 
 const LARGEST_NEGLECTED_GAP_FIRST_PHASE = 0.01;
 
@@ -14,12 +15,15 @@ class SlicerLayer {
 
     openPolygons = new Polygons();
 
+    polygonsPart = new Polygons();
+
     makePolygons() {
         this.makeBasicPolygonLoop();
 
+        this.createPolygonsPart();
         // this.polygons.simplify(meshfixMaximumResolution, meshfixMaximumDeviation);
 
-        this.polygons.removeDegenerateVerts();
+        // this.polygons.removeDegenerateVerts();
     }
 
     makeBasicPolygonLoop() {
@@ -44,12 +48,14 @@ class SlicerLayer {
             segmentIdx = this.getNextSegmentIdx(slicerSegment, startSegmentIdx);
 
             if (segmentIdx === startSegmentIdx) {
+                polygon.close();
                 this.polygons.add(polygon);
                 return;
             }
         }
 
         // This is openPolygons
+        polygon.close();
         this.polygons.add(polygon);
     }
 
@@ -96,6 +102,10 @@ class SlicerLayer {
         }
 
         return -1;
+    }
+
+    createPolygonsPart() {
+        this.polygonsPart = this.polygons.splitIntoParts();
     }
 }
 
@@ -218,7 +228,7 @@ export class Slicer {
     interpolate(x, x0, x1, y0, y1) {
         const dx01 = x1 - x0;
         const num = (y1 - y0) * (x - x0);
-        return y0 + num / dx01;
+        return round(y0 + num / dx01, 3);
     }
 
     makePolygons(mesh) {

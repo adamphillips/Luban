@@ -1,4 +1,4 @@
-import { Vector3 } from '../math/Vector3';
+import { Vector3 } from '../../../shared/lib/math/Vector3';
 
 export class AABB3D {
     min;
@@ -39,5 +39,11 @@ export class AABB3D {
     offset(offset) {
         this.min = Vector3.add(this.min, offset);
         this.max = Vector3.add(this.max, offset);
+    }
+
+    resize(offset) {
+        this.min = Vector3.mul(this.min, offset);
+        this.max = Vector3.mul(this.max, offset);
+        this.length = Vector3.mul(this.length, offset);
     }
 }

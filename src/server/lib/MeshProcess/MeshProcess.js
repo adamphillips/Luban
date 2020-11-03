@@ -1,11 +1,11 @@
 import Jimp from 'jimp';
 import { Mesh } from './Mesh';
-import { Vector2 } from '../math/Vector2';
+import { Vector2 } from '../../../shared/lib/math/Vector2';
 import { CNC_IMAGE_NEGATIVE_RANGE_FIELD, PLANE_XY } from '../../constants';
 import { pathWithRandomSuffix } from '../../../shared/lib/random-utils';
 import DataStorage from '../../DataStorage';
 import { isZero } from '../../../shared/lib/utils';
-import { Line, TYPE_SEGMENT } from '../math/Line';
+import { Line, TYPE_SEGMENT } from '../../../shared/lib/math/Line';
 import { Slicer } from './Slicer';
 
 /**
@@ -100,6 +100,24 @@ export class MeshProcess {
             throw new Error(`MeshProcess load uploadName: ${uploadName} failed`);
         }
     }
+
+    slice() {
+        const mesh = this.mesh;
+
+        mesh.offset({
+            x: -(mesh.aabb.max.x + mesh.aabb.min.x) / 2,
+            y: -(mesh.aabb.max.y + mesh.aabb.min.y) / 2,
+            z: -mesh.aabb.min.z
+        });
+
+        const { height } = mesh.getWidthAndHeight(true, this.sliceDensity);
+
+        const initialLayerThickness = 1 / this.sliceDensity;
+        const layerThickness = 1 / this.sliceDensity;
+
+        this.slicer = new Slicer(this.mesh, layerThickness, height, initialLayerThickness);
+    }
+
 
     convertTo3AxisImage() {
         const mesh = this.mesh;

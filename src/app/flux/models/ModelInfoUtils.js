@@ -1,5 +1,5 @@
 import {
-    ABSENT_VALUE,
+    ABSENT_VALUE, CNC_3DP_MODEL_SLICE_MODE_ROTATION,
     PROCESS_MODE_BW,
     PROCESS_MODE_GREYSCALE,
     PROCESS_MODE_VECTOR, SOURCE_TYPE_DXF,
@@ -247,6 +247,7 @@ const generateCNCDefaults = (mode, sourceType) => {
                 // Default movement mode is greyscale-line
                 // greyscale-line: workSpeed: 500, dwellTime: null
                 // greyscale-dot: workSpeed: null, dwellTime: 42
+                sliceMode: CNC_3DP_MODEL_SLICE_MODE_ROTATION,
                 toolDiameter: 0.1, // tool diameter (in mm)
                 toolAngle: 30, // tool angle (in degree, defaults to 30° for V-Bit)
                 toolShaftDiameter: 3.175,
