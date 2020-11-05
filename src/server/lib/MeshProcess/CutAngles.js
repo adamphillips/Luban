@@ -87,6 +87,20 @@ export class CutAngle {
         }
         this._checkIsRound();
     }
+
+    offset(offset) {
+        this.start += offset.left;
+        this.end -= offset.right;
+
+        if (this.end < 0) {
+            this.end += 360;
+            this.lap = 0;
+        }
+        if (this.start > 360) {
+            this.start -= 360;
+            this.lap = 0;
+        }
+    }
 }
 
 export class CutAngles {
@@ -157,6 +171,12 @@ export class CutAngles {
         }
 
         this.cutAngles = res.cutAngles;
+    }
+
+    offset(offset) {
+        for (const cutAngle of this.cutAngles) {
+            cutAngle.offset(offset);
+        }
     }
 
     removeLessThanAngle(angle) {

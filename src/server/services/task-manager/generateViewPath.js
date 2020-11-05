@@ -28,14 +28,14 @@ const generateCncViewPath = async (modelInfo, onProgress) => {
             svg = dxfToSvg(svg);
             updateDxfBoundingBox(svg);
 
-            const generator = new CncToolPathGenerator();
+            const generator = new CncToolPathGenerator(modelInfo);
             generator.on('progress', (p) => onProgress(p));
             viewPath = await generator.generateViewPathObj(svg, modelInfo);
         } else {
             const svgParser = new SVGParser();
             const svg = await svgParser.parseFile(modelPath);
 
-            const generator = new CncToolPathGenerator();
+            const generator = new CncToolPathGenerator(modelInfo);
             generator.on('progress', (p) => onProgress(p));
             viewPath = await generator.generateViewPathObj(svg, modelInfo);
         }

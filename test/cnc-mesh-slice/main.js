@@ -41,14 +41,16 @@ const parseAsCNC = (toolPathObj) => {
 };
 
 function process() {
-    const mesh = new CncMeshToolPathGenerator({ uploadName: 'scad_chess_knight.stl', isRotate: true, diameter: 36, gcodeConfig: { density: 5, toolAngle: 30 } });
+    const mesh = new CncMeshToolPathGenerator({ uploadName: 'scad_chess_knight.stl', isRotate: true, diameter: 36, gcodeConfig: { density: 5, toolAngle: 20, jogSpeed: 600, workSpeed: 200 } });
     // const mesh = new MeshToolPathGenerator({ uploadName: 'cube.stl', isRotate: true });
     const data = mesh.generateToolPathObj();
 
-    const header = ';Header Start\n'
+    console.log(data.estimatedTime);
+
+    const header = `${';Header Start\n'
         + ';header_type: cnc\n'
         + ';renderMethod: line\n'
-        + ';file_total_lines: 156990\n'
+        + ';file_total_lines: '}${data.data.length}\n`
         + ';estimated_time(s): 0\n'
         + ';is_rotate: true\n'
         + ';diameter: 32\n'

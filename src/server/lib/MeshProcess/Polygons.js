@@ -175,6 +175,14 @@ export class Polygons {
                 }
             }
         }
+
+        this.close();
+    }
+
+    close() {
+        for (const polygon of this.polygons) {
+            polygon.close();
+        }
     }
 
     splitIntoParts() {

@@ -4,7 +4,7 @@ import SVGParser, { flip, rotate, scale, sortShapes, translate } from '../../../
 import Normalizer from './Normalizer';
 import { svgToSegments } from './SVGFill';
 import { parseDxf, dxfToSvg, updateDxfBoundingBox } from '../../../shared/lib/DXFParser/Parser';
-import ToolPath from '../ToolPath';
+import XToBToolPath from '../ToolPath/XToBToolPath';
 
 function pointEqual(p1, p2) {
     return p1[0] === p2[0] && p1[1] === p2[1];
@@ -14,7 +14,7 @@ class LaserToolPathGenerator extends EventEmitter {
     constructor(modelInfo) {
         super();
         const { isRotate, diameter } = modelInfo;
-        this.toolPath = new ToolPath({ isRotate, radius: diameter / 2 });
+        this.toolPath = new XToBToolPath({ isRotate, diameter });
     }
 
     getGcodeHeader() {

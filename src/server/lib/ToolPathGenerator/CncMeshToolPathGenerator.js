@@ -11,7 +11,7 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
         super();
         const { uploadName, gcodeConfig = {}, isRotate, diameter, transformation = {} } = modelInfo;
 
-        const { density = 5, toolAngle = 30 } = gcodeConfig;
+        const { density = 5, toolAngle = 20 } = gcodeConfig;
 
         this.modelInfo = modelInfo;
         this.uploadName = uploadName;
@@ -61,10 +61,11 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
                     nPolygon.add(point);
                 }
 
-                if (i === polygon.path.length) {
+                if (i === polygon.path.length - 2) {
                     nPolygon.add(p2);
                 }
             }
+
             nPolygons.add(nPolygon);
         }
 
@@ -106,14 +107,14 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
     }
 
     _generateSlicerLayerCutPointPath(slicerLayer) {
-        const nPolygonParts = this._interpolatePolygons(slicerLayer.polygonsPart);
+        const nPolygonsPart = this._interpolatePolygons(slicerLayer.polygonsPart);
 
         const paths = [];
 
         let zero = 0;
         let noZero = 0;
 
-        for (const polygon of nPolygonParts.polygons) {
+        for (const polygon of nPolygonsPart.polygons) {
             let path = [];
             let lastPoint = null;
             let lastCutAngles = null;
@@ -122,7 +123,7 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
             for (let i = 0; i < polygon.size(); i++) {
                 const cutAngles = new CutAngles();
                 const point = polygon.path[i];
-                for (const polygon2 of nPolygonParts.polygons) {
+                for (const polygon2 of nPolygonsPart.polygons) {
                     if (polygon === polygon2) {
                         const cutAngle = this._createToolPathPointCutAngle(point, polygon2, i + 1, i + polygon2.size() - 1);
                         cutAngles.add(cutAngle);
@@ -134,6 +135,7 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
 
                 cutAngles.not();
                 cutAngles.removeLessThanAngle(this.toolAngle);
+                cutAngles.offset({ left: this.toolAngle / 2, right: this.toolAngle / 2 });
 
                 if (cutAngles.size() === 0) {
                     zero++;
@@ -161,8 +163,8 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
                         }
 
                         if (path.length === 0) {
-                            path.push({ x: lastPoint.x, y: lastPoint.y, normal: lastCutAngles.get(lastCutAngleIndex).getNormal(), cutAngle: lastCutAngles.get(lastCutAngleIndex) });
-                            paths.push(path);
+                            // path.push({ x: lastPoint.x, y: lastPoint.y, normal: lastCutAngles.get(lastCutAngleIndex).getNormal(), cutAngle: lastCutAngles.get(lastCutAngleIndex) });
+                            // paths.push(path);
                             path = [];
                             lastPoint = point;
                             lastCutAngles = cutAngles;
@@ -179,9 +181,7 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
                     } else {
                         paths.push(path);
                         path = [];
-                        lastPoint = point;
-                        lastCutAngles = cutAngles;
-                        lastCutAngleIndex = 0;
+                        i--;
                     }
                 }
             }
@@ -191,9 +191,42 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
             }
         }
 
+        this._mergePath(paths);
+
         console.log('zero', zero, noZero, slicerLayer.z);
 
         return paths;
+    }
+
+    _mergePath(paths) {
+        let i = 0;
+        while (i < paths.length) {
+            let merge = false;
+            for (let j = i + 1; j < paths.length; j++) {
+                const p1 = paths[i];
+                const p2 = paths[j];
+
+                const p1Start = p1[0];
+                const p1End = p1[p1.length - 1];
+                const p2Start = p2[0];
+                const p2End = p2[p2.length - 1];
+
+                if (Vector2.isEqual(p2Start, p1End) && p2Start.cutAngle.isOverlap(p1End.cutAngle)) {
+                    paths[i] = p1.concat(p2);
+                    paths.splice(j, 1);
+                    merge = true;
+                    break;
+                } else if (Vector2.isEqual(p1Start, p2End) && p1Start.cutAngle.isOverlap(p2End.cutAngle)) {
+                    paths[i] = p2.concat(p1);
+                    paths.splice(j, 1);
+                    merge = true;
+                    break;
+                }
+            }
+            if (!merge) {
+                i++;
+            }
+        }
     }
 
     _generateSlicerLayerToolPath(slicerLayer, paths) {
@@ -201,34 +234,65 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
 
         const gY = slicerLayer.z;
 
+        while (paths.length > 0) {
+            let useIndex = 0;
+            let lastState = this.toolPath.getState();
+            for (let i = 1; i < paths.length; i++) {
+                const gB1 = 90 - paths[i][0].normal;
+                const gB2 = 90 - paths[useIndex][0].normal;
+                if (Math.abs(gB1 - lastState.B) < Math.abs(gB2 - lastState.B)) {
+                    useIndex = i;
+                }
+            }
 
-        for (const path of paths) {
+            const path = paths.splice(useIndex, 1)[0];
+
             this.toolPath.move0Z(this.initialZ, jogSpeed);
 
             for (let i = 0; i < path.length; i++) {
                 const p = path[i];
 
 
-                const lastState = this.toolPath.getState();
-                let gB = 90 - p.normal;
+                lastState = this.toolPath.getState();
+                let endB = 90 - p.normal;
 
-                while (Math.abs(lastState.B - gB) > 180) {
-                    gB = lastState.B > gB ? gB + 360 : gB - 360;
+                while (Math.abs(lastState.B - endB) > 180) {
+                    endB = lastState.B > endB ? endB + 360 : endB - 360;
                 }
 
-                const { x, y } = Vector2.rotate(p, gB);
-                const gX = round(x, 2);
-                const gZ = round(y, 2);
+                const gBs = [];
+
+                if (lastState.B < endB) {
+                    for (let j = lastState.B + 0.5; j < endB; j += 0.5) {
+                        gBs.push(j);
+                    }
+                } else {
+                    for (let j = lastState.B - 0.5; j > endB; j -= 0.5) {
+                        gBs.push(j);
+                    }
+                }
+                gBs.push(endB);
+
                 if (i === 0) {
-                    this.toolPath.move0B(gB, jogSpeed);
-                    this.toolPath.move0XY(gX, gY, workSpeed);
+                    const { x, y } = Vector2.rotate(p, endB);
+                    const gX = round(x, 2);
+                    const gZ = round(y, 2);
+                    this.toolPath.move0XYB(gX, gY, endB, workSpeed);
                     this.toolPath.move1Z(gZ, plungeSpeed);
                 } else {
-                    this.toolPath.move1XYZB(gX, gY, gZ, gB, workSpeed);
+                    for (const gB of gBs) {
+                        const { x, y } = Vector2.rotate(p, gB);
+                        const gX = round(x, 2);
+                        const gZ = round(y, 2);
+                        this.toolPath.move1XYZB(gX, gY, gZ, gB, workSpeed);
+                    }
                 }
-                // console.log('p', p, gX, gZ, gB);
             }
         }
+
+        // for (const path of paths) {
+        //
+        // }
     }
 
     // eslint-disable-next-line no-unused-vars
@@ -255,8 +319,25 @@ export default class CncMeshToolPathGenerator extends EventEmitter {
         const p = null;
 
         for (const slicerLayer of slicer.slicerLayers) {
+            // if (slicerLayer.z < 27 || slicerLayer.z > 27.2) {
+            //     continue;
+            // }
             const paths = this._generateSlicerLayerCutPointPath(slicerLayer);
             this._generateSlicerLayerToolPath(slicerLayer, paths);
+
+            // this.toolPath.move0Y(slicerLayer.z + 50, 300);
+            // this.toolPath.move0B(0, 300);
+
+            // for (const polygon of slicerLayer.polygonsPart.polygons) {
+            //     for (let i = 0; i < polygon.size(); i++) {
+            //         const point = polygon.path[i];
+            //         if (i === 0) {
+            //             this.toolPath.move0XZ(point.x, point.y, 300);
+            //         } else {
+            //             this.toolPath.move1XZ(point.x, point.y, 300);
+            //         }
+            //     }
+            // }
         }
 
         this.toolPath.spindleOff();

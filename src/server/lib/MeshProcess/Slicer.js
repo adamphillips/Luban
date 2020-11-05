@@ -23,7 +23,9 @@ class SlicerLayer {
         this.createPolygonsPart();
         // this.polygons.simplify(meshfixMaximumResolution, meshfixMaximumDeviation);
 
-        // this.polygons.removeDegenerateVerts();
+        this.polygons.removeDegenerateVerts();
+
+        this.polygonsPart.removeDegenerateVerts();
     }
 
     makeBasicPolygonLoop() {
@@ -48,14 +50,12 @@ class SlicerLayer {
             segmentIdx = this.getNextSegmentIdx(slicerSegment, startSegmentIdx);
 
             if (segmentIdx === startSegmentIdx) {
-                polygon.close();
                 this.polygons.add(polygon);
                 return;
             }
         }
 
         // This is openPolygons
-        polygon.close();
         this.polygons.add(polygon);
     }
 

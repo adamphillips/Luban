@@ -2,9 +2,9 @@ import Jimp from 'jimp';
 import EventEmitter from 'events';
 // import GcodeParser from './GcodeParser';
 import Normalizer from './Normalizer';
-import ToolPath from '../ToolPath';
 import { round } from '../../../shared/lib/utils';
 import { CNC_IMAGE_NEGATIVE_RANGE_FIELD } from '../../constants';
+import XToBToolPath from '../ToolPath/XToBToolPath';
 
 const OVERLAP_RATE = 0.5;
 const MAX_DENSITY = 20;
@@ -102,7 +102,7 @@ export default class CncReliefToolPathGenerator extends EventEmitter {
 
         this.modelDiameter = this.targetWidth / this.density / Math.PI;
 
-        this.toolPath = new ToolPath({ isRotate: this.isRotate, radius: this.isModel ? this.modelDiameter / 2 : this.diameter / 2 });
+        this.toolPath = new XToBToolPath({ isRotate: this.isRotate, diameter: this.isModel ? this.modelDiameter : this.diameter });
 
         this.normalizer = new Normalizer(
             'Center',
@@ -399,8 +399,8 @@ export default class CncReliefToolPathGenerator extends EventEmitter {
         const normalizedHeight = normalizer.y(this.targetHeight);
         const zSteps = Math.ceil(this.targetDepth / this.stepDown) + 1;
 
-        this.toolPath.safeStart(normalizedX0, normalizedHeight, stopHeight, safetyHeight);
-
+        // safeStart
+        this.toolPath.safeStart(normalizedX0, normalizedHeight, stopHeight, safetyHeight, jogSpeed);
         this.toolPath.spindleOn({ P: 100 });
 
         const zMin = [];

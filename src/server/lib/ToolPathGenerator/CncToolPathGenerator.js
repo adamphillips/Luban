@@ -6,9 +6,10 @@
 import EventEmitter from 'events';
 import PolygonOffset from './PolygonOffset';
 import { flip, scale, rotate, translate } from '../../../shared/lib/SVGParser';
-import Toolpath from '../ToolPath';
 import { svgToSegments } from './SVGFill';
 import Normalizer from './Normalizer';
+import XToBToolPath from '../ToolPath/XToBToolPath';
+import { round } from '../../../shared/lib/utils';
 
 function distance(p, q) {
     return Math.sqrt((p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]));
@@ -37,6 +38,17 @@ function isPointInPolygon(point, polygon) {
     return inside;
 }
 
+/**
+ * Find the distance from point p to line segment p1p2
+ * @returns {number}
+ */
+// eslint-disable-next-line no-unused-vars
+function pointDistance(p1, p2, p) {
+    const n = [p2[0] - p1[0], p2[1] - p1[1]];
+    const m = [p2[0] - p[0], p2[1] - p[1]];
+    const d = Math.abs((n[0] * m[1] - n[1] * m[0]) / Math.sqrt(n[0] * n[0] + n[1] * n[1]));
+    return d;
+}
 
 /**
  * Get the first point from the svg
@@ -70,6 +82,15 @@ function getFirstPointFromSvg(svg) {
  * ToolPathGenerator
  */
 export default class CNCToolPathGenerator extends EventEmitter {
+    constructor(modelInfo = {}) {
+        super();
+
+        const { isRotate, diameter } = modelInfo;
+        this.isRotate = isRotate;
+        this.diameter = diameter;
+        this.toolPath = new XToBToolPath({ isRotate, diameter });
+    }
+
     _processPathType(svg, pathType, options) {
         if (pathType === 'path') {
             // empty
@@ -215,7 +236,7 @@ export default class CNCToolPathGenerator extends EventEmitter {
             { x: 0, y: 0 }
         );
 
-        const toolPath = new Toolpath({ isRotate, radius });
+        const toolPath = new XToBToolPath({ isRotate, diameter });
 
         const point = getFirstPointFromSvg(svg);
 
@@ -223,7 +244,7 @@ export default class CNCToolPathGenerator extends EventEmitter {
         stopHeight += initialZ;
         safetyHeight += initialZ;
 
-        toolPath.safeStart(normalizer.x(point[0]), normalizer.y(point[1]), stopHeight, safetyHeight);
+        toolPath.safeStart(normalizer.x(point[0]), normalizer.y(point[1]), stopHeight, safetyHeight, jogSpeed);
 
         toolPath.spindleOn({ P: 100 });
 
@@ -371,6 +392,10 @@ export default class CNCToolPathGenerator extends EventEmitter {
     }
 
     generateViewPathObj(svg, modelInfo) {
+        return this.isRotate ? this._generateRotateViewPath(svg, modelInfo) : this._generateViewPathObj(svg, modelInfo);
+    }
+
+    _generateViewPathObj(svg, modelInfo) {
         const { sourceType, mode, transformation, gcodeConfig } = modelInfo;
 
         const {
@@ -496,5 +521,158 @@ export default class CNCToolPathGenerator extends EventEmitter {
             boundingBox: boundingBox,
             data: data
         };
+    }
+
+    _generateRotateViewPath(svg, modelInfo) {
+        const { sourceType, mode, transformation, gcodeConfig, isRotate, diameter } = modelInfo;
+
+        const {
+            toolAngle, toolShaftDiameter,
+            targetDepth
+        } = gcodeConfig;
+
+        const density = 10;
+
+        const { positionX, positionY } = transformation;
+
+        this._processSVG(svg, modelInfo);
+
+        // radius needed to carve to `targetDepth`
+        const radiusNeeded = (toolAngle === 180)
+            ? (toolShaftDiameter * 0.5)
+            : (targetDepth * Math.tan(toolAngle / 2 * Math.PI / 180));
+        const off = Math.min(radiusNeeded, toolShaftDiameter * 0.5);
+
+        const minX = svg.viewBox[0] - off;
+        const maxX = svg.viewBox[0] + svg.viewBox[2] + off;
+        const minY = svg.viewBox[1] - off;
+        const maxY = svg.viewBox[1] + svg.viewBox[3] + off;
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const targetWidth = isRotate ? Math.ceil(diameter * Math.PI * density) : Math.ceil(width * density);
+        const targetHeight = Math.ceil(height * density);
+
+        const normalizer = new Normalizer(
+            'Center',
+            minX,
+            maxX,
+            minY,
+            maxY,
+            { x: 1, y: 1 },
+            { x: 0, y: 0 }
+        );
+
+        const viewPaths = [];
+
+        for (let j = 0; j < targetHeight; j++) {
+            viewPaths[j] = [];
+            for (let i = 0; i < targetWidth; i++) {
+                const x = normalizer.x((i / density) + minX);
+                const z = this.diameter / 2;
+                const b = this.toolPath.toB(x) / 180 * Math.PI;
+                const px = round(z * Math.sin(b), 2);
+                const py = round(z * Math.cos(b), 2);
+                viewPaths[j][i] = { x: px, y: py };
+            }
+        }
+
+        const allPoints = this._getSvgAllPoints(svg);
+
+        const count = allPoints.reduce((c, v) => {
+            return c + v.length;
+        }, 0);
+
+        for (const points of allPoints) {
+            for (let n = 0; n < points.length - 1; n++) {
+                const p1 = points[n];
+                const p2 = points[n + 1];
+
+                const startX = Math.ceil((Math.min(p1[0], p2[0]) - minX) * density);
+                const endX = Math.ceil((Math.max(p1[0], p2[0]) - minX) * density);
+                const startY = Math.ceil((Math.min(p1[1], p2[1]) - minY) * density);
+                const endY = Math.ceil((Math.max(p1[1], p2[1]) - minY) * density);
+
+                for (let j = startY; j < endY; j++) {
+                    for (let i = startX; i < endX; i++) {
+                        const x = ((i % targetWidth) / density) + minX;
+                        const y = (j / density) + minY;
+                        const p = [x, y];
+                        if (pointDistance(p1, p2, p) <= off) {
+                            const z = this.diameter / 2 - targetDepth;
+                            const b = this.toolPath.toB(x) / 180 * Math.PI;
+                            const px = round(z * Math.sin(b), 2);
+                            const py = round(z * Math.cos(b), 2);
+                            viewPaths[j][i].x = px;
+                            viewPaths[j][i].y = py;
+                        }
+                    }
+                }
+
+                this.emit('progress', points.length / count);
+            }
+        }
+
+
+        const boundingBox = {
+            min: {
+                x: positionX - width / 2 - off,
+                y: positionY - height / 2 - off,
+                z: -targetDepth
+            },
+            max: {
+                x: positionX + width / 2 + off,
+                y: positionY + height / 2 + off,
+                z: 0
+            },
+            length: {
+                x: width + 2 * off,
+                y: height + 2 * off,
+                z: targetDepth
+            }
+        };
+
+        this.emit('progress', 1);
+
+        return {
+            sourceType: sourceType,
+            mode: mode,
+            positionX: 0,
+            positionY: positionY,
+            rotationB: this.toolPath.toB(positionX),
+            data: viewPaths,
+            width: width,
+            height: height,
+            boundingBox: boundingBox,
+            isRotate: isRotate,
+            diameter: diameter
+        };
+    }
+
+    _getSvgAllPoints(svg) {
+        const allPoints = [];
+        for (let i = 0; i < svg.shapes.length; i++) {
+            const shape = svg.shapes[i];
+            if (!shape.visibility) {
+                continue;
+            }
+
+            for (let j = 0; j < shape.paths.length; j++) {
+                const path = shape.paths[j];
+                if (path.points.length === 0) {
+                    continue;
+                }
+
+                if (path.outlinePoints) {
+                    for (const outlinePoint of path.outlinePoints) {
+                        allPoints.push(outlinePoint);
+                    }
+                } else {
+                    allPoints.push(path.points);
+                }
+            }
+        }
+        return allPoints;
     }
 }

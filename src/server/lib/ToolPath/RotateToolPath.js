@@ -111,6 +111,21 @@ class RotateToolPath {
         this.setCommand(commandObj);
     }
 
+    move0XYB(x, y, b, f) {
+        if (this.isRotate) {
+            f = this.toRotateF(b - this.state.B, x - this.state.X, y - this.state.Y, 0, f);
+        }
+        const moveRate = this.setMoveRate(f);
+        // let commandObj;
+        // if (this.isRotate) {
+        //     commandObj = moveRate ? { 'G': 0, B: this.toB(x), Y: y, F: moveRate } : { 'G': 0, B: this.toB(x), Y: y };
+        // } else {
+        const commandObj = moveRate ? { 'G': 0, X: x, Y: y, B: b, F: moveRate } : { 'G': 0, X: x, Y: y, B: b };
+        // }
+
+        this.setCommand(commandObj);
+    }
+
     move0XZ(x, z, f) {
         if (this.isRotate) {
             f = this.toRotateF(x - this.state.X, 0, 0, z - this.state.Z, f);
@@ -238,15 +253,14 @@ class RotateToolPath {
 
     move1XYZB(x, y, z, b, f) {
         if (this.isRotate) {
-            f = this.toRotateF(b - this.state.b, x - this.state.X, y - this.state.Y, z - this.state.Z, f);
+            f = this.toRotateF(b - this.state.B, x - this.state.X, y - this.state.Y, z - this.state.Z, f);
         }
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, B: b, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, B: b, Y: y, Z: z };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Y: y, Z: z };
-        }
+        // if (this.isRotate) {
+        const commandObj = rapidMoveRate ? { 'G': 1, X: x, B: b, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, B: b, Y: y, Z: z };
+        // } else {
+        //     commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Y: y, Z: z };
+        // }
 
         this.setCommand(commandObj);
     }
@@ -309,7 +323,8 @@ class RotateToolPath {
         const s = db * db + dx * dx + dy * dy + dz * dz;
         const ns = (db * 2 * Math.PI * this.radius / 360) * (db * 2 * Math.PI * this.radius / 360) + dx * dx + dy * dy + dz * dz;
         const nf = Math.round(Math.sqrt(s / ns) * f);
-        return Math.max(nf, MAX_B_SPEED);
+
+        return Math.min(nf, MAX_B_SPEED);
     }
 
     spindleOn(options = {}) {

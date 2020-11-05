@@ -85,7 +85,7 @@ export class ViewPathRenderer {
         for (const viewPath of viewPaths.data) {
             // eslint-disable-next-line no-unused-vars
             const { mode, boundingBox } = viewPath;
-            const mesh = mode === PROCESS_MODE_VECTOR
+            const mesh = mode === PROCESS_MODE_VECTOR && !viewPaths.isRotate
                 ? this._generateSvgViewPathObj(viewPath)
                 : this._generateViewPathObj(viewPath);
 

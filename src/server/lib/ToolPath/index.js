@@ -2,11 +2,11 @@ import _ from 'lodash';
 import { isEqual, isZero } from '../../../shared/lib/utils';
 
 // Temporarily prevent the rotation axis motor from losing steps
-const MAX_B_SPEED = 2700;
+const MAX_B_SPEED = 2400;
 
 class ToolPath {
     constructor(options = {}) {
-        const { isRotate, radius } = options;
+        const { isRotate, diameter } = options;
         this.boundingBox = {
             max: {
                 x: null,
@@ -23,7 +23,7 @@ class ToolPath {
         };
         this.estimatedTime = 0;
         this.isRotate = isRotate;
-        this.radius = radius;
+        this.diameter = diameter;
     }
 
     commands = [];
@@ -77,148 +77,114 @@ class ToolPath {
         }
     }
 
-    move0XYZ(x, y, z, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, y - this.state.Y, z - this.state.Z, f);
-        }
+    move0X(x, f) {
         const moveRate = this.setMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = moveRate ? { 'G': 0, B: this.toB(x), Y: y, Z: z, F: moveRate } : { 'G': 0, B: this.toB(x), Y: y, Z: z };
-        } else {
-            commandObj = moveRate ? { 'G': 0, X: x, Y: y, Z: z, F: moveRate } : { 'G': 0, X: x, Y: y, Z: z };
-        }
-
-        this.setCommand(commandObj);
-    }
-
-    move0XY(x, y, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, y - this.state.Y, 0, f);
-        }
-        const moveRate = this.setMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = moveRate ? { 'G': 0, B: this.toB(x), Y: y, F: moveRate } : { 'G': 0, B: this.toB(x), Y: y };
-        } else {
-            commandObj = moveRate ? { 'G': 0, X: x, Y: y, F: moveRate } : { 'G': 0, X: x, Y: y };
-        }
-
+        const commandObj = moveRate ? { 'G': 0, X: x, F: moveRate } : { 'G': 0, X: x };
         this.setCommand(commandObj);
     }
 
     move0Z(z, f) {
         const moveRate = this.setMoveRate(f);
-
         const commandObj = moveRate ? { 'G': 0, Z: z, F: moveRate } : { 'G': 0, Z: z };
+        this.setCommand(commandObj);
+    }
 
+    move0B(b, f) {
+        const moveRate = this.setMoveRate(this.toRotateF(b - this.state.B, 0, 0, 0, f));
+        const commandObj = moveRate ? { 'G': 0, B: b, F: moveRate } : { 'G': 0, B: b };
+        this.setCommand(commandObj);
+    }
+
+    move0XY(x, y, f) {
+        const moveRate = this.setMoveRate(f);
+        const commandObj = moveRate ? { 'G': 0, X: x, Y: y, F: moveRate } : { 'G': 0, X: x, Y: y };
+        this.setCommand(commandObj);
+    }
+
+    move0BY(b, y, f) {
+        const moveRate = this.setMoveRate(this.toRotateF(b - this.state.B, 0, y - this.state.Y, 0, f));
+        const commandObj = moveRate ? { 'G': 0, B: b, Y: y, F: moveRate } : { 'G': 0, B: b, Y: y };
+        this.setCommand(commandObj);
+    }
+
+    move0XYZ(x, y, z, f) {
+        const moveRate = this.setMoveRate(f);
+        const commandObj = moveRate ? { 'G': 0, X: x, Y: y, Z: z, F: moveRate } : { 'G': 0, X: x, Y: y, Z: z };
         this.setCommand(commandObj);
     }
 
     move1X(x, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, 0, 0, f);
-        }
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, B: this.toB(x), F: rapidMoveRate } : { 'G': 1, B: this.toB(x) };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, F: rapidMoveRate } : { 'G': 1, X: x };
-        }
+        const commandObj = rapidMoveRate ? { 'G': 1, X: x, F: rapidMoveRate } : { 'G': 1, X: x };
+        this.setCommand(commandObj);
+    }
 
+    move1B(b, f) {
+        const rapidMoveRate = this.setRapidMoveRate(this.toRotateF(b - this.state.B, 0, 0, 0, f));
+        const commandObj = rapidMoveRate ? { 'G': 1, B: b, F: rapidMoveRate } : { 'G': 1, B: b };
         this.setCommand(commandObj);
     }
 
     move1Y(y, f) {
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, Y: y, F: rapidMoveRate } : { 'G': 1, Y: y };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, Y: y, F: rapidMoveRate } : { 'G': 1, Y: y };
-        }
+        const commandObj = rapidMoveRate ? { 'G': 1, Y: y, F: rapidMoveRate } : { 'G': 1, Y: y };
+        this.setCommand(commandObj);
+    }
 
+    move1Z(z, f) {
+        const rapidMoveRate = this.setRapidMoveRate(f);
+        const commandObj = rapidMoveRate ? { 'G': 1, Z: z, F: f } : { 'G': 1, Z: z };
         this.setCommand(commandObj);
     }
 
     move1XY(x, y, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, y - this.state.Y, 0, f);
-        }
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, B: this.toB(x), Y: y, F: rapidMoveRate } : { 'G': 1, B: this.toB(x), Y: y };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, F: rapidMoveRate } : { 'G': 1, X: x, Y: y };
-        }
-
+        const commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, F: rapidMoveRate } : { 'G': 1, X: x, Y: y };
         this.setCommand(commandObj);
     }
 
-    move1XZ(x, z, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, 0, z - this.state.Z, f);
-        }
-        const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, B: this.toB(x), Z: z, F: rapidMoveRate } : { 'G': 1, B: this.toB(x), Z: z };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Z: z };
-        }
+    move1BY(b, y, f) {
+        const rapidMoveRate = this.setRapidMoveRate(this.toRotateF(b - this.state.B, 0, y - this.state.Y, 0, f));
+        const commandObj = rapidMoveRate ? { 'G': 1, B: b, Y: y, F: rapidMoveRate } : { 'G': 1, B: b, Y: y };
+        this.setCommand(commandObj);
+    }
 
+
+    move1XZ(x, z, f) {
+        const rapidMoveRate = this.setRapidMoveRate(f);
+        const commandObj = rapidMoveRate ? { 'G': 1, X: x, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Z: z };
         this.setCommand(commandObj);
     }
 
 
     move1YZ(y, z, f) {
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, Y: y, Z: z };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, Y: y, Z: z };
-        }
-
+        const commandObj = rapidMoveRate ? { 'G': 1, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, Y: y, Z: z };
         this.setCommand(commandObj);
     }
 
+    move1BZ(b, z, f) {
+        const rapidMoveRate = this.setRapidMoveRate(this.toRotateF(b - this.state.B, 0, 0, z - this.state.Z, f));
+        const commandObj = rapidMoveRate ? { 'G': 1, B: b, Z: z, F: rapidMoveRate } : { 'G': 1, B: b, Z: z };
+        this.setCommand(commandObj);
+    }
 
     move1XYZ(x, y, z, f) {
-        if (this.isRotate) {
-            f = this.toRotateF(x - this.state.X, y - this.state.Y, z - this.state.Z, f);
-        }
         const rapidMoveRate = this.setRapidMoveRate(f);
-        let commandObj;
-        if (this.isRotate) {
-            commandObj = rapidMoveRate ? { 'G': 1, B: this.toB(x), Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, B: this.toB(x), Y: y, Z: z };
-        } else {
-            commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Y: y, Z: z };
-        }
-
+        const commandObj = rapidMoveRate ? { 'G': 1, X: x, Y: y, Z: z, F: rapidMoveRate } : { 'G': 1, X: x, Y: y, Z: z };
         this.setCommand(commandObj);
     }
 
-    move1Z(z, f) {
-        const rapidMoveRate = this.setRapidMoveRate(f);
-
-        const commandObj = rapidMoveRate ? { 'G': 1, Z: z, F: f } : { 'G': 1, Z: z };
-
-        this.setCommand(commandObj);
-    }
-
-    safeStart(x, y, stopHeight, safetyHeight) {
-        this.commands.push({ G: 90 });
-        this.commands.push({ G: 0, Z: stopHeight, F: 400 });
-        if (this.isRotate) {
-            this.commands.push({ G: 0, B: this.toB(x), Y: y, F: 400 });
-        } else {
-            this.commands.push({ G: 0, X: x, Y: y, F: 400 });
-        }
-        this.commands.push({ G: 0, Z: safetyHeight, F: 400 });
-    }
+    // safeStart(x, y, stopHeight, safetyHeight) {
+    //     this.commands.push({ G: 90 });
+    //     this.commands.push({ G: 0, Z: stopHeight, F: 400 });
+    //     if (this.isRotate) {
+    //         this.commands.push({ G: 0, B: this.toB(x), Y: y, F: 400 });
+    //     } else {
+    //         this.commands.push({ G: 0, X: x, Y: y, F: 400 });
+    //     }
+    //     this.commands.push({ G: 0, Z: safetyHeight, F: 400 });
+    // }
 
     setN() {
         this.commands.push({ 'N': ' ' });
@@ -228,22 +194,17 @@ class ToolPath {
         this.commands.push({ 'C': comment });
     }
 
-    toB(x) {
-        const b = x / this.radius / (2 * Math.PI) * 360;
-        return Math.round(b * 100) / 100;
-    }
-
-    toRotateF(db = 0, dy = 0, dz = 0, f) {
-        if (db === 0 || this.radius === 0) {
+    toRotateF(db = 0, dx = 0, dy = 0, dz = 0, f) {
+        if (db === 0 || this.diameter === 0) {
             return f;
         }
-        if (dy === 0 && dz === 0) {
-            return Math.round(f * 360 / Math.PI / this.radius / 2);
+        if (dx === 0 && dy === 0 && dz === 0) {
+            return Math.round(f * 360 / Math.PI / this.diameter);
         }
-        const s = db * db + dy * dy + dz * dz;
-        const ns = (db * 2 * Math.PI * this.radius / 360) * (db * 2 * Math.PI * this.radius / 360) + dy * dy + dz * dz;
+        const s = db * db + dx * dx + dy * dy + dz * dz;
+        const ns = (db * Math.PI * this.diameter / 360) * (db * Math.PI * this.diameter / 360) + dx * dx + dy * dy + dz * dz;
         const nf = Math.round(Math.sqrt(s / ns) * f);
-        return Math.max(nf, MAX_B_SPEED);
+        return Math.min(nf, MAX_B_SPEED);
     }
 
     spindleOn(options = {}) {
@@ -336,8 +297,8 @@ class ToolPath {
 
     setDirection(newDirection) {
         if (newDirection && this.state.direction) {
-            const { X, Y, Z } = this.state.direction;
-            if (isEqual(X, newDirection.X) && isEqual(Y, newDirection.Y) && isEqual(Z, newDirection.Z)) {
+            const { X, Y, Z, B } = this.state.direction;
+            if (isEqual(X, newDirection.X) && isEqual(Y, newDirection.Y) && isEqual(Z, newDirection.Z) && isEqual(B, newDirection.B)) {
                 return true;
             }
         }
@@ -347,14 +308,11 @@ class ToolPath {
 
     getDirection(commandObj) {
         const { X, Y, Z, B } = commandObj;
-        let dx = !_.isNaN(X - this.state.X) ? X - this.state.X : 0;
+        const dx = !_.isNaN(X - this.state.X) ? X - this.state.X : 0;
         const dy = !_.isNaN(Y - this.state.Y) ? Y - this.state.Y : 0;
         const dz = !_.isNaN(Z - this.state.Z) ? Z - this.state.Z : 0;
         const db = !_.isNaN(B - this.state.B) ? B - this.state.B : 0;
-        if (this.isRotate) {
-            dx = db;
-        }
-        const lineLength = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const lineLength = Math.sqrt(dx * dx + dy * dy + dz * dz + db * db);
         if (isZero(lineLength)) {
             return null;
         } else {
@@ -362,7 +320,8 @@ class ToolPath {
                 X: dx / lineLength,
                 Y: dy / lineLength,
                 Z: dz / lineLength,
-                lineLength: Math.sqrt(dx * dx + dy * dy + dz * dz)
+                B: db / lineLength,
+                lineLength: lineLength
             };
         }
     }

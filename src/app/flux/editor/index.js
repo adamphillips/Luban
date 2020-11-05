@@ -11,7 +11,7 @@ import {
 import { threejsModelActions } from './threejs-model';
 import { svgModelActions } from './svg-model';
 import { baseActions, checkIsAllModelsPreviewed, computeTransformationSizeForTextVector } from './base';
-import { PAGE_EDITOR, PAGE_PROCESS, PROCESS_MODE_VECTOR } from '../../constants';
+import { PAGE_EDITOR, PAGE_PROCESS } from '../../constants';
 
 import { controller } from '../../lib/controller';
 import { round } from '../../../shared/lib/utils';
@@ -957,7 +957,7 @@ export const actions = {
         const { diameter = 0 } = materials || {};
 
         for (const model of modelGroup.getModels()) {
-            if (model.hideFlag || (isRotate && model.mode === PROCESS_MODE_VECTOR)) continue;
+            if (model.hideFlag) continue;
             const modelTaskInfo = model.getTaskInfo();
             const toolPathModelTaskInfo = toolPathModelGroup.getToolPathModelTaskInfo(modelTaskInfo.modelID);
             if (toolPathModelTaskInfo) {
